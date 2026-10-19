@@ -1,3 +1,4 @@
+
 // CLIENT
 import java.awt.*;
 import java.awt.event.*;
@@ -5,7 +6,7 @@ import java.io.*;
 import java.net.*;
 import javax.swing.*;
 
-public class ClientStr extends JPanel implements ActionListener {
+public class ClientStr extends JPanel {
 	String nomeServer = "localhost";
 	int portaServer = 6789;
 	Socket miosocket;
@@ -43,12 +44,34 @@ public class ClientStr extends JPanel implements ActionListener {
 
 		bottoneLettera = new JButton("Invia lettera");
 		bottoneLettera.setBounds(70, 390, 130, 30);
-		bottoneLettera.addActionListener(this);
+		bottoneLettera.addActionListener(new ActionListener() {
+			// Override the actionPerformed() method
+			public void actionPerformed(ActionEvent e) {
+				String lettera = campoLettera.getText().trim();
+				if (lettera.length() != 1) {
+					labelMessaggio.setText("Inserisci una sola lettera!");
+					return;
+				}
+				inviaAlServer(lettera);
+			}
+		});
 		add(bottoneLettera);
 
 		bottoneParola = new JButton("Invia parola");
 		bottoneParola.setBounds(360, 430, 130, 30);
-		bottoneParola.addActionListener(this);
+		bottoneParola.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				String parola = "";
+				for (int i = 0; i < campiParola.length; i++) {
+					parola = parola + campiParola[i].getText().trim();
+				}
+				if (parola.length() != campiParola.length) {
+					labelMessaggio.setText("Compila tutte le caselle della parola!");
+					return;
+				}
+				inviaAlServer(parola);
+			}
+		});
 		add(bottoneParola);
 	}
 
@@ -84,17 +107,27 @@ public class ClientStr extends JPanel implements ActionListener {
 		}
 	}
 
-	// formato: ESITO|parolaClient|vite|lettereCorrette|lettereSbagliate|paroleSbagliate|messaggio
-	public void riceviStato() throws IOException {
-		stringaRicevutaDalServer = inDalServer.readLine();
-		String[] p = stringaRicevutaDalServer.split("\\|", -1);
-		esito = p[0];
-		parolaAttuale = p[1];
-		vite = Integer.parseInt(p[2]);
-		lettereCorrette = p[3];
-		lettereSbagliate = p[4];
-		paroleSbagliate = p[5];
-		messaggio = p[6];
+	// formato:
+	// ESITO-parolaClient-vite-lettereCorrette-lettereSbagliate-paroleSbagliate-messaggio
+	public void riceviStato() {
+		try {
+			stringaRicevutaDalServer = inDalServer.readLine();
+			System.out.println("in dal server");
+			System.out.println(stringaRicevutaDalServer);
+			String[] p = stringaRicevutaDalServer.split("-");
+			esito = p[0];
+			parolaAttuale = p[1];
+			vite = Integer.parseInt(p[2]);
+			lettereCorrette = p[3];
+			lettereSbagliate = p[4];
+			paroleSbagliate = p[5];
+			messaggio = p[6];
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+			System.out.println("Errore durante la comunicazione col server");
+			System.exit(1);
+		}
+
 		if (esito.equals("INIZIO")) {
 			creaCampiParola();
 		}
@@ -109,7 +142,7 @@ public class ClientStr extends JPanel implements ActionListener {
 	// un campo per ogni lettera: la lunghezza si ricava dalla parola con i trattini
 	public void creaCampiParola() {
 		for (int i = 0; i < campiParola.length; i++) {
-			remove(campiParola[i]);
+			remove(campiParola[i]); // devo rimuovere quelli vecchi, nel caso in cui si rigioca
 		}
 		campiParola = new JTextField[parolaAttuale.length()];
 		for (int i = 0; i < campiParola.length; i++) {
@@ -119,33 +152,14 @@ public class ClientStr extends JPanel implements ActionListener {
 		}
 	}
 
-	public void actionPerformed(ActionEvent e) {
-		if (e.getSource() == bottoneLettera) {
-			String lettera = campoLettera.getText().trim();
-			if (lettera.length() != 1) {
-				labelMessaggio.setText("Inserisci una sola lettera!");
-				return;
-			}
-			inviaAlServer(lettera);
-		} else {
-			String parola = "";
-			for (int i = 0; i < campiParola.length; i++) {
-				parola = parola + campiParola[i].getText().trim();
-			}
-			if (parola.length() != campiParola.length) {
-				labelMessaggio.setText("Compila tutte le caselle della parola!");
-				return;
-			}
-			inviaAlServer(parola);
-		}
-	}
-
+	// invio la parola/lettera -> vedo se ho vinto/perso -> se si faccio quello che devo fare per i vari casi
 	public void inviaAlServer(String testo) {
 		try {
 			outVersoServer.writeBytes(testo.toUpperCase() + '\n');
+			System.out.println("inviamo al server:");
+			System.out.println(testo.toUpperCase());
 			riceviStato();
 			if (esito.equals("VINTO") || esito.equals("PERSO")) {
-				paintImmediately(0, 0, getWidth(), getHeight());
 				chiediRigioca();
 			}
 		} catch (Exception e) {
@@ -155,16 +169,22 @@ public class ClientStr extends JPanel implements ActionListener {
 		}
 	}
 
-	public void chiediRigioca() throws IOException {
+	public void chiediRigioca() {
 		int scelta = JOptionPane.showConfirmDialog(this, messaggio + "\nVuoi rigiocare?", "Fine partita",
 				JOptionPane.YES_NO_OPTION);
-		if (scelta == JOptionPane.YES_OPTION) {
-			outVersoServer.writeBytes("SI" + '\n');
-			riceviStato(); // arriva il messaggio INIZIO della nuova partita
-		} else {
-			outVersoServer.writeBytes("NO" + '\n');
-			miosocket.close();
-			System.exit(0);
+		try {
+			if (scelta == JOptionPane.YES_OPTION) {
+				outVersoServer.writeBytes("SI" + '\n');
+				riceviStato(); // arriva il messaggio INIZIO della nuova partita
+			} else {
+				outVersoServer.writeBytes("NO" + '\n');
+				miosocket.close();
+				System.exit(0);
+			}
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+			System.out.println("Errore durante la comunicazione col server");
+			System.exit(1);
 		}
 	}
 

@@ -1,3 +1,4 @@
+
 //SERVER
 import java.io.*;
 import java.net.*;
@@ -15,6 +16,7 @@ public class ServerStr {
 	Random random = new Random();
 	String messaggio = ""; // messaggio da mandare al client
 
+	// array delle possibili parole con le quali giocare
 	String[] parole = { "COMPUTER", "CARTELLA", "TASTIERA", "PROCESSORE", "MOUSE", "PROGRAMMA", "MONITOR",
 			"PASSWORD", "STAMPANTE", "INTERNET", "BROWSER", "SCHERMO", "SERVER", "TABLET", "CLIENT", "SMARTPHONE",
 			"RETE", "PORTATILE", "ROUTER", "SOFTWARE", "DATABASE", "HARDWARE", "TABELLA", "CODICE", "PIXEL",
@@ -23,7 +25,7 @@ public class ServerStr {
 
 	// ---------- PARTE SOCKET ----------
 
-	// crea il ServerSocket una sola volta (non lo chiudiamo dopo l'accept)
+	// crea il ServerSocket
 	public void avviaServer() {
 		try {
 			System.out.println("1 SERVER partito in esecuzione...");
@@ -39,7 +41,7 @@ public class ServerStr {
 	public Socket attendi() {
 		try {
 			System.out.println("In attesa di un client...");
-			client = server.accept();
+			client = server.accept(); // accetta e inizia a comunicare con il client
 			inDalClient = new BufferedReader(new InputStreamReader(client.getInputStream()));
 			outVersoClient = new DataOutputStream(client.getOutputStream());
 			creaGiocatore();
@@ -53,15 +55,25 @@ public class ServerStr {
 
 	// ---------- PARTE GIOCO ----------
 
+	// COSA FA QUESTO METODO?
+	// estrae una parola in maniera randomica dall'elenco e crea il giocatore
+	// passandogli la parola che deve indovinare
 	public void creaGiocatore() {
 		int indice = random.nextInt(parole.length); // da 0 a 38
 		giocatori.add(new Giocatore(parole[indice]));
 	}
 
+	// COSA FA QUESTO METODO?
+	// prende l'ultimo giocatore, nell'array giocatori il giocatore che ci
+	// interessa, visto che il gioco è monoclient,
+	// ci interessa l'ultimo quindi perche quelli precedneti hanno gia finito di
+	// giocare
 	public Giocatore ultimoGiocatore() {
 		return giocatori.get(giocatori.size() - 1);
 	}
 
+	// COSA FA QUESTO METODO?
+	// tramite questo metodo comunichiamo server-client
 	public void comunica() {
 		try {
 			System.out.println("3...client connesso, inizia la partita");
@@ -129,14 +141,15 @@ public class ServerStr {
 		char[] attuale = g.getParolaClientAttuale();
 		boolean corretta = false;
 
-		for (int i=0; i<parola.length; i++){
-			if (parola[i] == c){
+		for (int i = 0; i < parola.length; i++) {
+			if (parola[i] == c) {
 				corretta = true;
 				attuale[i] = c;
 			}
 		}
 
-		// btw i set sono inutili perche in java gli array non vengono copiati ma gli diamo il puntatore alla memoria
+		// btw i set sono inutili perche in java gli array non vengono copiati ma gli
+		// diamo il puntatore alla memoria
 		// quindi modificando attuale modifichiamoa anche quello che è dentro giocatore
 
 		if (!corretta) {
@@ -203,22 +216,21 @@ public class ServerStr {
 		return false;
 	}
 
-	// formato: ESITO|parolaClient|vite|corrette|sbagliate|paroleSbagliate|messaggio
-	public void inviaStato(String esito, String msg) throws IOException {
+	// formato: ESITO-parolaClient-vite-corrette-sbagliate-paroleSbagliate-messaggio
+	public void inviaStato(String esito, String msg) {
 		Giocatore g = ultimoGiocatore();
-		String paroleSbagliate = "";
-		String[] inviate = g.getParoleInviate();
-		for (int i = 0; i < inviate.length; i++) {
-			if (i > 0) {
-				paroleSbagliate = paroleSbagliate + ",";
-			}
-			paroleSbagliate = paroleSbagliate + inviate[i];
-		}
-		String risposta = esito + "|" + String.valueOf(g.getParolaClientAttuale()) + "|" + g.getVite() + "|"
-				+ String.valueOf(g.getLettereInviateCorrette()) + "|"
-				+ String.valueOf(g.getLettereInviateSbagliate()) + "|" + paroleSbagliate + "|" + msg;
+
+		String risposta = esito + "-" + String.valueOf(g.getParolaClientAttuale()) + "-" + g.getVite() + "-"
+				+ String.valueOf(g.getLettereInviateCorrette()) + "-"
+				+ String.valueOf(g.getLettereInviateSbagliate()) + "-" + String.join(",", g.getParoleInviate()) + "-"
+				+ msg;
 		System.out.println("7...invio al client: " + risposta);
-		outVersoClient.writeBytes(risposta + '\n');
+		try {
+			outVersoClient.writeBytes(risposta + '\n');
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+			System.out.println("Errore durante l'invio al client");
+		}
 	}
 
 	public static void main(String[] args) {
