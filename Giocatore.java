@@ -62,34 +62,23 @@ public class Giocatore {
 		this.paroleInviate = paroleInviate;
 	}
 
-	// gli array delle lettere vengono messi in ordine alfabetico
-	public void setLettereInviateCorrette(char[] lettere) {
-		Arrays.sort(lettere);
-		this.lettereInviateCorrette = lettere;
-	}
-
-	public void setLettereInviateSbagliate(char[] lettere) {
-		Arrays.sort(lettere);
-		this.lettereInviateSbagliate = lettere;
-	}
-
-	// ---- metodi di aiuto per aggiungere elementi agli array ----
+	// ---- metodi per aggiungere elementi agli array ----
 	public void aggiungiLetteraCorretta(char c) {
-		char[] nuovo = Arrays.copyOf(lettereInviateCorrette, lettereInviateCorrette.length + 1);
-		nuovo[nuovo.length - 1] = c;
-		setLettereInviateCorrette(nuovo);
+		lettereInviateCorrette = Arrays.copyOf(lettereInviateCorrette, lettereInviateCorrette.length + 1); // cosa copiare e nuova dimensione
+		lettereInviateCorrette[lettereInviateCorrette.length - 1] = c;
+		Arrays.sort(lettereInviateCorrette);
 	}
 
 	public void aggiungiLetteraSbagliata(char c) {
-		char[] nuovo = Arrays.copyOf(lettereInviateSbagliate, lettereInviateSbagliate.length + 1);
-		nuovo[nuovo.length - 1] = c;
-		setLettereInviateSbagliate(nuovo);
+		lettereInviateSbagliate = Arrays.copyOf(lettereInviateSbagliate, lettereInviateSbagliate.length + 1);
+		lettereInviateSbagliate[lettereInviateSbagliate.length - 1] = c;
+		Arrays.sort(lettereInviateSbagliate);
 	}
 
 	public void aggiungiParola(String parola) {
-		String[] nuovo = Arrays.copyOf(paroleInviate, paroleInviate.length + 1);
-		nuovo[nuovo.length - 1] = parola;
-		setParoleInviate(nuovo);
+		paroleInviate = Arrays.copyOf(paroleInviate, paroleInviate.length + 1);
+		paroleInviate[paroleInviate.length - 1] = parola;
+		Arrays.sort(paroleInviate);
 	}
 
 	// true se la lettera e' gia' stata inviata (giusta o sbagliata)
@@ -110,7 +99,7 @@ public class Giocatore {
 	// true se la parola e' gia' stata inviata
 	public boolean contieneParola(String parola) {
 		for (int i = 0; i < paroleInviate.length; i++) {
-			if (paroleInviate[i].equals(parola)) {
+			if (paroleInviate[i].equals(parola)) { // equals perche == confronta gli indirizzi in memoria
 				return true;
 			}
 		}

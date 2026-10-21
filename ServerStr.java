@@ -55,7 +55,6 @@ public class ServerStr {
 
 	// ---------- PARTE GIOCO ----------
 
-	// COSA FA QUESTO METODO?
 	// estrae una parola in maniera randomica dall'elenco e crea il giocatore
 	// passandogli la parola che deve indovinare
 	public void creaGiocatore() {
@@ -63,7 +62,6 @@ public class ServerStr {
 		giocatori.add(new Giocatore(parole[indice]));
 	}
 
-	// COSA FA QUESTO METODO?
 	// prende l'ultimo giocatore, nell'array giocatori il giocatore che ci
 	// interessa, visto che il gioco è monoclient,
 	// ci interessa l'ultimo quindi perche quelli precedneti hanno gia finito di
@@ -72,7 +70,6 @@ public class ServerStr {
 		return giocatori.get(giocatori.size() - 1);
 	}
 
-	// COSA FA QUESTO METODO?
 	// tramite questo metodo comunichiamo server-client
 	public void comunica() {
 		try {
@@ -81,9 +78,9 @@ public class ServerStr {
 			boolean continua = true;
 			while (continua) {
 				Giocatore g = ultimoGiocatore();
-				stringaRicevuta = inDalClient.readLine();
+				stringaRicevuta = inDalClient.readLine(); // read line legge fino a \n e blocca il programma
 				if (stringaRicevuta == null) {
-					System.out.println("Il client si è disconnesso");
+					System.out.println("Il client si e disconnesso");
 					break; // il client si e' disconnesso
 				}
 				stringaRicevuta = stringaRicevuta.toUpperCase();
@@ -93,14 +90,7 @@ public class ServerStr {
 				inviaStato(esito, messaggio);
 
 				if (esito.equals("VINTO") || esito.equals("PERSO")) {
-					// partita finita: il client risponde SI o NO alla rigiocata
-					String risposta = inDalClient.readLine();
-					if (risposta != null && risposta.toUpperCase().equals("SI")) {
-						creaGiocatore();
-						inviaStato("INIZIO", "Nuova partita, indovina la parola!");
-					} else {
-						continua = false;
-					}
+					continua = false;
 				}
 			}
 			System.out.println("9...SERVER chiude la connessione con il client");
@@ -117,6 +107,13 @@ public class ServerStr {
 
 	// decide se e' una lettera o una parola e restituisce l'esito
 	public String elabora(Giocatore g, String msg) {
+		for (int i = 0; i < msg.length(); i++) {
+			char c = msg.charAt(i);
+			if (c < 'A' || c > 'Z') {
+				messaggio = "Puoi inviare solo lettere dalla A alla Z, rimandalo!";
+				return "ERRORE";
+			}
+		}
 		if (msg.length() == 1) {
 			if (!Character.isLetter(msg.charAt(0))) {
 				messaggio = "Il carattere inviato non e' una lettera, rimandalo!";

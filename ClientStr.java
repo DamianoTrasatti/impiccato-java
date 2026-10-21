@@ -6,6 +6,12 @@ import java.io.*;
 import java.net.*;
 import javax.swing.*;
 
+// trim: toglie gli spazi a inizio a fine
+/*
+	JFrame: la finestra vera e propria con titolo, barra ed x per chiudere
+	JPanel: superficie rettangolare che si mette dentro la finestra, ci si mettono componenti e disegni come linee
+*/
+
 public class ClientStr extends JPanel {
 	String nomeServer = "localhost";
 	int portaServer = 6789;
@@ -24,18 +30,42 @@ public class ClientStr extends JPanel {
 	String messaggio = "";
 
 	// componenti del pannello
+	JFrame finestra;
 	JTextField campoLettera;
 	JButton bottoneLettera;
 	JTextField[] campiParola = new JTextField[0];
 	JButton bottoneParola;
 	JLabel labelMessaggio;
 
+	// ux
+	Timer timer;
+	int secondiRimasti = 60;
+	JLabel labelTimer;
+
 	public ClientStr() {
-		setLayout(null);
-		setPreferredSize(new Dimension(700, 640));
+		setLayout(null); // decidiamo noi dove posizionare gli elementi
+		setPreferredSize(new Dimension(700, 640)); // dimensione del pannello in pixel
+
+		labelTimer = new JLabel("Tempo: 60 s");
+		labelTimer.setBounds(540, 50, 140, 25); // sotto le vite
+		add(labelTimer);
+
+		timer = new Timer(1000, new ActionListener() { // scatta ogni secondo
+			public void actionPerformed(ActionEvent e) {
+				secondiRimasti--;
+				labelTimer.setText("Tempo: " + secondiRimasti + " s");
+				if (secondiRimasti <= 10) {
+					labelTimer.setForeground(Color.RED); // ultimi 10 secondi, setforeground cambia le proprietà del componente
+				}
+				if (secondiRimasti == 0) {
+					timer.stop();
+					tempoScaduto();
+				}
+			}
+		});
 
 		labelMessaggio = new JLabel("");
-		labelMessaggio.setBounds(20, 300, 660, 60);
+		labelMessaggio.setBounds(20, 300, 660, 60); // x, y, width, height
 		add(labelMessaggio);
 
 		campoLettera = new JTextField();
@@ -62,11 +92,20 @@ public class ClientStr extends JPanel {
 		bottoneParola.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				String parola = "";
+				// compongo la parola
 				for (int i = 0; i < campiParola.length; i++) {
 					parola = parola + campiParola[i].getText().trim();
 				}
+				// controllo che non ci siano campi vuoti
+				for (int i = 0; i < campiParola.length; i++) {
+					if (campiParola[i].getText().trim().equals("")) {
+						labelMessaggio.setText("Tutti i campi della parola devono essere inseriti");
+						return;
+					}
+				}
+				// controllo che la lunghezza coincida
 				if (parola.length() != campiParola.length) {
-					labelMessaggio.setText("Compila tutte le caselle della parola!");
+					labelMessaggio.setText("Compila tutte le caselle della parola in modo corretto!");
 					return;
 				}
 				inviaAlServer(parola);
@@ -95,11 +134,12 @@ public class ClientStr extends JPanel {
 	public void comunica() {
 		try {
 			riceviStato();
-			JFrame finestra = new JFrame("Impiccato");
+			finestra = new JFrame("Impiccato");
 			finestra.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 			finestra.add(this);
-			finestra.pack();
+			finestra.pack(); // adatta la finestra al pannello
 			finestra.setVisible(true);
+			timer.start();
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 			System.out.println("Errore durante la comunicazione col server");
@@ -135,7 +175,7 @@ public class ClientStr extends JPanel {
 		for (int i = 0; i < campiParola.length; i++) {
 			campiParola[i].setText("");
 		}
-		labelMessaggio.setText("<html>" + messaggio + "</html>");
+		labelMessaggio.setText("<html>" + messaggio + "</html>"); // html cosi che va a capo in automatico
 		repaint();
 	}
 
@@ -152,7 +192,8 @@ public class ClientStr extends JPanel {
 		}
 	}
 
-	// invio la parola/lettera -> vedo se ho vinto/perso -> se si faccio quello che devo fare per i vari casi
+	// invio la parola/lettera -> vedo se ho vinto/perso -> se si faccio quello che
+	// devo fare per i vari casi
 	public void inviaAlServer(String testo) {
 		try {
 			outVersoServer.writeBytes(testo.toUpperCase() + '\n');
@@ -160,7 +201,10 @@ public class ClientStr extends JPanel {
 			System.out.println(testo.toUpperCase());
 			riceviStato();
 			if (esito.equals("VINTO") || esito.equals("PERSO")) {
+				timer.stop();
 				chiediRigioca();
+			} else {
+				restartTimer();
 			}
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
@@ -173,19 +217,36 @@ public class ClientStr extends JPanel {
 		int scelta = JOptionPane.showConfirmDialog(this, messaggio + "\nVuoi rigiocare?", "Fine partita",
 				JOptionPane.YES_NO_OPTION);
 		try {
-			if (scelta == JOptionPane.YES_OPTION) {
-				outVersoServer.writeBytes("SI" + '\n');
-				riceviStato(); // arriva il messaggio INIZIO della nuova partita
-			} else {
-				outVersoServer.writeBytes("NO" + '\n');
-				miosocket.close();
-				System.exit(0);
-			}
+			miosocket.close();
 		} catch (Exception e) {
-			System.out.println(e.getMessage());
-			System.out.println("Errore durante la comunicazione col server");
-			System.exit(1);
+			System.out.println("Errore durante la chiusura");
 		}
+		if (scelta == JOptionPane.YES_OPTION) {
+			ClientStr nuovo = new ClientStr();
+			nuovo.connetti();
+			nuovo.comunica(); // aspetta il suo turno, poi apre la nuova finestra
+			finestra.dispose(); // chiude la finestra vecchia
+		} else {
+			System.exit(0);
+		}
+	}
+
+	public void tempoScaduto() {
+		JOptionPane.showMessageDialog(this, "Tempo scaduto! Il client si chiude.");
+		try {
+			miosocket.close();
+		} catch (Exception e) {
+			System.out.println("Errore durante la chiusura");
+		}
+		System.exit(0);
+	}
+
+
+	public void restartTimer(){
+		secondiRimasti = 60;
+		labelTimer.setText("Tempo: 60 s");
+		labelTimer.setForeground(Color.BLACK); // cambia le proprieta del componente
+		timer.restart();
 	}
 
 	// ---------- DISEGNO ----------
@@ -248,11 +309,13 @@ public class ClientStr extends JPanel {
 		}
 
 		// parole sbagliate
-		g.drawString("Parole sbagliate:", 360, 490);
 		if (paroleSbagliate.length() > 0) {
 			String[] parole = paroleSbagliate.split(",");
 			for (int i = 0; i < parole.length; i++) {
-				g.drawString(parole[i], 360, 510 + i * 18);
+				g.setColor(Color.RED);
+				g.drawRect(360, 490 + i * 25, 12 * parole[i].length() + 10, 22);
+				g.setColor(Color.BLACK);
+				g.drawString(parole[i], 365, 507 + i * 25);
 			}
 		}
 	}
